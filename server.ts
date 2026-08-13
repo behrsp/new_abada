@@ -1,7 +1,6 @@
 import express from 'express';
 import path from 'path';
 import pg from 'pg';
-import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -17,6 +16,8 @@ function getDbConnectionString(): string {
   url = url.replace(/^["']|["']$/g, '');
   // Strip channel_binding query param as node-postgres doesn't support SASL channel binding
   url = url.replace(/([?&])channel_binding=[^&]*&?/g, '$1').replace(/[?&]$/, '');
+  // Strip sslmode query param so it doesn't conflict with pg pool ssl options
+  url = url.replace(/([?&])sslmode=[^&]*&?/g, '$1').replace(/[?&]$/, '');
   return url;
 }
 
@@ -763,6 +764,7 @@ async function startLocalServer() {
   const PORT = process.env.PORT || 3000;
 
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
