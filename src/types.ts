@@ -99,3 +99,15 @@ export interface CordaOption {
   category: 'Iniciante' | 'Aluno' | 'Graduado' | 'Instrutor' | 'Professor' | 'Mestrando' | 'Mestre' | 'Grão-Mestre';
   element?: string;
 }
+
+export interface Photo {
+  id: number;
+  title: string;
+  description?: string;
+  image_url: string;
+  category: string;
+  created_by?: number;
+  created_at: string;
+  author_name?: string;
+  author_nickname?: string;
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Music, Radio, Calendar, Users, MessageSquarePlus } from 'lucide-react';
+import { Music, Radio, Calendar, Camera, Users, MessageSquarePlus } from 'lucide-react';
 import { User } from '../types';
 
 interface NavigationProps {
@@ -21,6 +21,7 @@ export const Navigation: React.FC<NavigationProps> = ({
     { id: 'musicas', label: 'Músicas', icon: Music },
     { id: 'toques', label: 'Toques', icon: Radio },
     { id: 'eventos', label: 'Eventos', icon: Calendar },
+    { id: 'fotos', label: 'Fotos', icon: Camera },
     ...(isAdminOrProf
       ? [{ id: 'dashboard', label: 'Gestão de Alunos', icon: Users }]
       : []),

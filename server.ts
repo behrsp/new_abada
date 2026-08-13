@@ -149,34 +149,38 @@ async function initDb() {
         `INSERT INTO users (name, nickname, phone, birthday, password, role, corda)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
-          'Professor Mestre Admin',
-          'Mestre Admin',
+          'Robson',
+          'Piolho',
           adminPhone,
-          '1985-01-01',
+          '1985-03-30',
           '235689',
           'admin',
-          'Vermelha',
+          'Crua',
         ]
       );
       console.log('✅ Admin user created successfully.');
+    } else {
+      const existingUser = adminRes.rows[0];
+      if (existingUser.name === 'Professor Mestre Admin' || existingUser.corda === 'Vermelha') {
+        await client.query(
+          `UPDATE users SET name = $1, nickname = $2, birthday = $3, corda = $4 WHERE phone = $5`,
+          ['Robson', 'Piolho', '1985-03-30', 'Crua', adminPhone]
+        );
+        console.log('✅ Admin user profile updated to Robson / Piolho / Crua.');
+      }
     }
-
-    // Seed sample data if songs table is empty
-    const songsCheck = await client.query('SELECT COUNT(*) FROM songs');
-    if (parseInt(songsCheck.rows[0].count, 10) === 0) {
-      await client.query(`
-        INSERT INTO songs (title, author, lyrics, video_url) VALUES
-        ('Paraná Ê', 'Domínio Público / Mestre Bimba',
-         'Paraná ê, Paraná ê, Paraná!\n\nEu fui na Bahia e passei no mercado\nComprei um pandeiro e um berimbau\n\nParaná ê, Paraná ê, Paraná!\n\nVou jogar a capoeira, vou jogar na beira do mar\nQuem tem força tem mandinga, quem tem mandinga vai jogar\n\nParaná ê, Paraná ê, Paraná!\n\nParaná ê, Paraná ê, Paraná!',
-         'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('Dona Maria Como Vai Você', 'Mestre Suassuna',
-         'Dona Maria como vai você?\nEu vou pra Bahia pra ver a capoeira acontecer\n\nDona Maria como vai você?\nEu vou pra Bahia pra ver a capoeira acontecer\n\nA dona da casa é que sabe da lida\nPra fazer a moqueca com óleo de dorta\n\nDona Maria como vai você?\nEu vou pra Bahia pra ver a capoeira acontecer',
-         'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('Lamento de Cativeiro', 'Mestre Toni Vargas',
-         'Meu cativeiro, meu cativeiro...\nQuando o negro cantava o feitor dava de chibata\nHoje em dia o negro canta e o povo diz que é mulata!\n\nMeu cativeiro, meu cativeiro...\nAdeus meu cativeiro, adeus meus companheiros\nEu já vou me embora pra terra de bamba, pro meu terreiro!',
-         'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-      `);
-    }
+    // 8. Photos Table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS photos (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        image_url TEXT NOT NULL,
+        category TEXT DEFAULT 'Geral',
+        created_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
     // Seed sample data if toques table is empty
     const toquesCheck = await client.query('SELECT COUNT(*) FROM toques');
@@ -743,6 +747,57 @@ app.use('/api', ensureDbInit);
       );
 
       res.status(201).json(result.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Photos: List all
+  app.get('/api/photos', async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT p.id, p.title, p.description, p.image_url, p.category, p.created_by, p.created_at,
+               u.name as author_name, u.nickname as author_nickname
+        FROM photos p
+        LEFT JOIN users u ON u.id = p.created_by
+        ORDER BY p.created_at DESC
+      `);
+      res.json(result.rows);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Photos: Create
+  app.post('/api/photos', async (req, res) => {
+    try {
+      const { title, description, image_url, category, created_by } = req.body;
+
+      if (!title || !image_url) {
+        return res.status(400).json({ error: 'Título e URL da imagem são obrigatórios.' });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO photos (title, description, image_url, category, created_by)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [title, description || '', image_url, category || 'Geral', created_by || null]
+      );
+
+      res.status(201).json(result.rows[0]);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Photos: Delete
+  app.delete('/api/photos/:id', async (req, res) => {
+    try {
+      const id = req.params.id;
+      const result = await pool.query('DELETE FROM photos WHERE id = $1 RETURNING id', [id]);
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Foto não encontrada.' });
+      }
+      res.json({ message: 'Foto excluída com sucesso.' });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

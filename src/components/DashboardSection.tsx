@@ -36,12 +36,14 @@ interface DashboardSectionProps {
   users: User[];
   currentUser: User | null;
   onRefresh: () => void;
+  onUpdateCurrentUser?: (user: User) => void;
 }
 
 export const DashboardSection: React.FC<DashboardSectionProps> = ({
   users,
   currentUser,
   onRefresh,
+  onUpdateCurrentUser,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCordaFilter, setSelectedCordaFilter] = useState('');
@@ -193,6 +195,10 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
         });
 
         if (!res.ok) throw new Error('Erro ao atualizar dados do aluno.');
+        const updatedUser = await res.json();
+        if (editingUser.id === currentUser?.id && onUpdateCurrentUser) {
+          onUpdateCurrentUser(updatedUser);
+        }
       } else {
         const res = await fetch('/api/users', {
           method: 'POST',
@@ -245,6 +251,10 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
       });
 
       if (!res.ok) throw new Error('Erro ao promover graduação do aluno.');
+      const updatedUser = await res.json();
+      if (promoteUserTarget.id === currentUser?.id && onUpdateCurrentUser) {
+        onUpdateCurrentUser(updatedUser);
+      }
 
       setPromoteUserTarget(null);
       onRefresh();
@@ -1161,7 +1171,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
                 >
                   <option value="aluno">Aluno (Visualização e área do aluno)</option>
                   <option value="professor">Professor (Administração de conteúdos e alunos)</option>
-                  <option value="admin">Administrador Mestre (Acesso Total)</option>
+                  <option value="admin">Administrador (Acesso Total)</option>
                 </select>
               </div>
 

@@ -311,7 +311,7 @@ export const StudentSection: React.FC<StudentSectionProps> = ({
                   {req.admin_notes && (
                     <div className="mt-3 p-3 bg-amber-950/30 border border-amber-800/40 rounded-lg text-xs text-amber-200">
                       <span className="font-bold text-amber-400 block mb-0.5">
-                        Resposta do Mestre/Admin:
+                        Resposta da Administração / Professor:
                       </span>
                       {req.admin_notes}
                     </div>

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Song, Toque, CapoeiraEvent, StudentRequest, ChatMessage } from './types';
+import { User, Song, Toque, CapoeiraEvent, StudentRequest, ChatMessage, Photo } from './types';
 import { Header } from './components/Header';
 import { Navigation } from './components/Navigation';
 import { SongSection } from './components/SongSection';
 import { ToqueSection } from './components/ToqueSection';
 import { EventSection } from './components/EventSection';
+import { PhotoSection } from './components/PhotoSection';
 import { DashboardSection } from './components/DashboardSection';
 import { StudentSection } from './components/StudentSection';
 import { LoginModal } from './components/LoginModal';
@@ -33,6 +34,7 @@ export default function App() {
   const [songs, setSongs] = useState<Song[]>([]);
   const [toques, setToques] = useState<Toque[]>([]);
   const [events, setEvents] = useState<CapoeiraEvent[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [requests, setRequests] = useState<StudentRequest[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -65,6 +67,15 @@ export default function App() {
       console.error('Error fetching events', e);
     }
   }, [currentUser]);
+
+  const fetchPhotos = useCallback(async () => {
+    try {
+      const res = await fetch('/api/photos');
+      if (res.ok) setPhotos(await res.json());
+    } catch (e) {
+      console.error('Error fetching photos', e);
+    }
+  }, []);
 
   const fetchUsersList = useCallback(async () => {
     try {
@@ -103,10 +114,11 @@ export default function App() {
     fetchSongs();
     fetchToques();
     fetchEvents();
+    fetchPhotos();
     fetchUsersList();
     fetchRequests();
     fetchMessages();
-  }, [fetchSongs, fetchToques, fetchEvents, fetchUsersList, fetchRequests, fetchMessages]);
+  }, [fetchSongs, fetchToques, fetchEvents, fetchPhotos, fetchUsersList, fetchRequests, fetchMessages]);
 
   useEffect(() => {
     fetchAllData();
@@ -185,11 +197,21 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'fotos' && (
+          <PhotoSection
+            photos={photos}
+            currentUser={currentUser}
+            onRefresh={fetchPhotos}
+            onOpenLogin={() => setIsLoginModalOpen(true)}
+          />
+        )}
+
         {activeTab === 'dashboard' && (
           <DashboardSection
             users={usersList}
             currentUser={currentUser}
             onRefresh={fetchUsersList}
+            onUpdateCurrentUser={handleLoginSuccess}
           />
         )}
 
