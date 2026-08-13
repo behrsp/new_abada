@@ -1,0 +1,6 @@
+{
+  "name": "ABADÁ-CAPOEIRA",
+  "description": "Aplicativo de gestão e aprendizagem para ABADÁ-CAPOEIRA com acervo de músicas, toques de instrumentos, controle de graduações (cordas), solicitações e chat.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
