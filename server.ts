@@ -182,32 +182,6 @@ async function initDb() {
       );
     `);
 
-    // Seed sample data if toques table is empty
-    const toquesCheck = await client.query('SELECT COUNT(*) FROM toques');
-    if (parseInt(toquesCheck.rows[0].count, 10) === 0) {
-      await client.query(`
-        INSERT INTO toques (instrument, title, description, video_url) VALUES
-        ('berimbau', 'Toque de Angola', 'Ritmo lento e cadenciado, propício para o jogo baixo, manhoso e cheio de mandinga.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('berimbau', 'São Bento Grande de Regional', 'Toque rápido e dinâmico criado pelo Mestre Bimba para o jogo objetivo e veloz da Capoeira Regional.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('berimbau', 'Iúna', 'Toque solene reservado exclusivamente para o jogo entre Mestres e alunos graduados.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('pandeiro', 'Ritmada do Pandeiro de Angola', 'Batida clássica de pandeiro acompanhando o gunga e médio com variações e floreios.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('atabaque', 'Marcação de Atabaque para Roda', 'Toque ritmado que dita o pulso do coração da roda de capoeira.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('agogo', 'Toque Duplo de Agogô', 'Ritmo metálico marcante para acompanhamento nas rodas de angola e regional.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'),
-        ('cuia', 'Preparo e afinação da Cuia', 'Instruções de manutenção, cabaça e afinação do Berimbau.', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-      `);
-    }
-
-    // Seed sample data if events table is empty
-    const eventsCheck = await client.query('SELECT COUNT(*) FROM events');
-    if (parseInt(eventsCheck.rows[0].count, 10) === 0) {
-      await client.query(`
-        INSERT INTO events (title, event_date, location, description) VALUES
-        ('Roda Aberta de Sexta-Feira', '2026-08-20T19:00', 'Academia Central de Capoeira', 'Roda aberta para todos os alunos e convidados especiais de outros grupos. Traje completo.'),
-        ('Batizado e Troca de Cordas 2026', '2026-09-15T14:00', 'Ginásio Municipal Esportivo', 'Grande evento anual de formatura, batizado e troca de graduações com a presença de Mestres convidados.'),
-        ('Aulão de Ritmos e Instrumentos', '2026-08-28T10:00', 'Sede do Grupo', 'Workshop prático de confecção de afinação de berimbau e treino intensivo de cânticos.');
-      `);
-    }
-
     console.log('✅ Database initialized successfully.');
   } catch (err) {
     console.error('❌ Database initialization error:', err);
@@ -236,7 +210,8 @@ async function ensureDbInit(req: express.Request, res: express.Response, next: e
 }
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api', ensureDbInit);
 
 // API ROUTES
