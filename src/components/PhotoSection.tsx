@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Photo, User } from '../types';
 import { ConfirmModal } from './ConfirmModal';
 import {
@@ -10,6 +10,9 @@ import {
   X,
   Calendar,
   Image as ImageIcon,
+  Upload,
+  Link as LinkIcon,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface PhotoSectionProps {
@@ -20,6 +23,50 @@ interface PhotoSectionProps {
 }
 
 const PHOTO_CATEGORIES = ['Rodas', 'Batizados', 'Treinos', 'Eventos', 'Geral'];
+
+// Helper function to compress and resize image from device (cellphone / PC)
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82);
+          resolve(compressedBase64);
+        } else {
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 export const PhotoSection: React.FC<PhotoSectionProps> = ({
   photos,
@@ -35,12 +82,16 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
 
   // Add Photo Modal
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<'device' | 'url'>('device');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [category, setCategory] = useState('Geral');
+
+  const [selectedFileName, setSelectedFileName] = useState('');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lightbox Modal
   const [activePhoto, setActivePhoto] = useState<Photo | null>(null);
@@ -60,6 +111,33 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
     return matchesSearch && matchesCategory;
   });
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setAddError('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WEBP...).');
+      return;
+    }
+
+    setAddLoading(true);
+    setAddError('');
+    try {
+      setSelectedFileName(file.name);
+      const base64Image = await compressImage(file);
+      setImageUrl(base64Image);
+      // Auto fill title if empty
+      if (!title) {
+        const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        setTitle(nameWithoutExt);
+      }
+    } catch (err) {
+      setAddError('Erro ao carregar a imagem do dispositivo.');
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   const handleAddPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) {
@@ -67,8 +145,13 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
       return;
     }
 
-    if (!title.trim() || !imageUrl.trim()) {
-      setAddError('O título e a URL da imagem são obrigatórios.');
+    if (!title.trim()) {
+      setAddError('O título da foto é obrigatório.');
+      return;
+    }
+
+    if (!imageUrl.trim()) {
+      setAddError('Por favor, selecione uma foto do seu dispositivo ou informe o link da imagem.');
       return;
     }
 
@@ -97,6 +180,7 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
       setTitle('');
       setDescription('');
       setImageUrl('');
+      setSelectedFileName('');
       setCategory('Geral');
       onRefresh();
     } catch (err: any) {
@@ -156,7 +240,7 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
           className="z-10 px-4 py-2.5 bg-[#D4AF37] hover:bg-amber-400 text-stone-950 font-bold rounded-xl text-sm flex items-center justify-center space-x-2 shadow-lg transition transform hover:scale-[1.02] shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Cadastrar Foto</span>
+          <span>Enviar Foto</span>
         </button>
       </div>
 
@@ -304,7 +388,7 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
               className="mt-2 px-4 py-2 bg-[#D4AF37] text-stone-950 font-bold rounded-xl text-xs inline-flex items-center space-x-1.5 shadow"
             >
               <Plus className="w-4 h-4" />
-              <span>Adicionar Primeira Foto</span>
+              <span>Enviar Primeira Foto</span>
             </button>
           )}
         </div>
@@ -334,7 +418,114 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
               </div>
             )}
 
+            {/* Selector for upload mode: Device vs URL */}
+            <div className="flex bg-[#0F0E0D] p-1 border border-stone-800 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setUploadMode('device')}
+                className={`flex-1 py-2 rounded-lg flex items-center justify-center space-x-1.5 transition ${
+                  uploadMode === 'device'
+                    ? 'bg-[#2D2A26] text-[#D4AF37] border border-stone-700 shadow'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                <span>Foto do Dispositivo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadMode('url')}
+                className={`flex-1 py-2 rounded-lg flex items-center justify-center space-x-1.5 transition ${
+                  uploadMode === 'url'
+                    ? 'bg-[#2D2A26] text-[#D4AF37] border border-stone-700 shadow'
+                    : 'text-stone-400 hover:text-stone-200'
+                }`}
+              >
+                <LinkIcon className="w-4 h-4" />
+                <span>Link da Imagem (URL)</span>
+              </button>
+            </div>
+
             <form onSubmit={handleAddPhoto} className="space-y-4">
+              {/* Device Photo Selection Area */}
+              {uploadMode === 'device' && (
+                <div>
+                  <label className="block text-xs font-medium text-stone-300 mb-1">
+                    Selecione a foto do celular ou computador *
+                  </label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  {imageUrl ? (
+                    <div className="relative rounded-xl border border-[#D4AF37]/50 overflow-hidden bg-black/60 p-2 flex items-center justify-between">
+                      <div className="flex items-center space-x-3 overflow-hidden">
+                        <img
+                          src={imageUrl}
+                          alt="Pré-visualização"
+                          className="w-12 h-12 object-cover rounded-lg border border-stone-700"
+                        />
+                        <div className="truncate">
+                          <p className="text-xs font-bold text-white truncate">
+                            {selectedFileName || 'Foto selecionada'}
+                          </p>
+                          <span className="text-[10px] text-emerald-400 flex items-center space-x-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Pronta para salvar</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageUrl('');
+                          setSelectedFileName('');
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="p-1.5 bg-red-950/60 hover:bg-red-900 border border-red-800 text-red-200 rounded-lg text-xs"
+                        title="Trocar imagem"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="border-2 border-dashed border-stone-700 hover:border-[#D4AF37] bg-[#0F0E0D] hover:bg-[#2D2A26]/40 p-6 rounded-xl text-center cursor-pointer transition space-y-2 group"
+                    >
+                      <Upload className="w-8 h-8 text-stone-500 group-hover:text-[#D4AF37] mx-auto transition-colors" />
+                      <p className="text-xs font-bold text-stone-200">
+                        Clique aqui para escolher a foto
+                      </p>
+                      <p className="text-[10px] text-stone-500">
+                        Funciona direto da galeria da câmera do celular ou arquivo no computador
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* URL Input Mode */}
+              {uploadMode === 'url' && (
+                <div>
+                  <label className="block text-xs font-medium text-stone-300 mb-1">
+                    Link da Imagem (URL) *
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full px-3 py-2 bg-[#0F0E0D] border border-stone-700 rounded-lg text-xs text-stone-100 placeholder-stone-600 focus:outline-none focus:border-[#D4AF37]"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-stone-300 mb-1">
                   Título da Foto *
@@ -349,37 +540,21 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Categoria
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0F0E0D] border border-stone-700 rounded-lg text-xs text-stone-100 focus:outline-none focus:border-[#D4AF37]"
-                  >
-                    {PHOTO_CATEGORIES.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Link da Imagem (URL) *
-                  </label>
-                  <input
-                    type="url"
-                    required
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 bg-[#0F0E0D] border border-stone-700 rounded-lg text-xs text-stone-100 placeholder-stone-600 focus:outline-none focus:border-[#D4AF37]"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-stone-300 mb-1">
+                  Categoria
+                </label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0F0E0D] border border-stone-700 rounded-lg text-xs text-stone-100 focus:outline-none focus:border-[#D4AF37]"
+                >
+                  {PHOTO_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -405,10 +580,10 @@ export const PhotoSection: React.FC<PhotoSectionProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={addLoading}
+                  disabled={addLoading || !imageUrl}
                   className="px-5 py-2 rounded-lg bg-[#D4AF37] hover:bg-amber-400 text-stone-950 text-xs font-bold transition shadow disabled:opacity-50"
                 >
-                  {addLoading ? 'Salvando...' : 'Salvar Foto'}
+                  {addLoading ? 'Processando...' : 'Salvar Foto'}
                 </button>
               </div>
             </form>
