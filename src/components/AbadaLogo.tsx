@@ -16,7 +16,7 @@ export const AbadaLogo: React.FC<AbadaLogoProps> = ({ className = '', size = 'md
   return (
     <div className={`inline-flex items-center justify-center shrink-0 ${sizeClasses[size]} ${className}`}>
       <img
-        src="/logo-abada.svg"
+        src="/logo_new.svg"
         alt="ABADÁ-CAPOEIRA Logo"
         className="h-full w-auto object-contain drop-shadow-md"
         referrerPolicy="no-referrer"
